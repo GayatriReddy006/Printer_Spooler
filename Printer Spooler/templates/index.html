@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Printer Spooler System simulating process synchronization, mutual exclusion, and deadlock prevention using the Dining Philosophers concept.">
+    <title>Printer Spooler System | Synchronization & Dining Philosophers</title>
+    <!-- Modern Typography from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- Top Navigation & Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="header-branding">
+                <div class="logo-icon">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Printer Spooler System</h1>
+                    <p class="subtitle">Operating System Mini-Project • Synchronization, Mutual Exclusion & Deadlock Prevention</p>
+                </div>
+            </div>
+
+            <div class="header-status-group">
+                <div class="status-pill" id="poll-indicator">
+                    <span class="pulse-dot active"></span>
+                    <span id="conn-text">Live Polling (1.0s)</span>
+                </div>
+                <div class="status-pill" id="sim-state-pill">
+                    <span class="pill-label">Simulation:</span>
+                    <span class="pill-value badge-running" id="sim-state-badge">RUNNING</span>
+                </div>
+                <div class="status-pill" id="mutex-state-pill">
+                    <span class="pill-label">Printer Mutex:</span>
+                    <span class="pill-value badge-idle" id="mutex-state-badge">UNLOCKED</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="main-content">
+
+        <!-- Notification Banner / Toast Container -->
+        <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+        <!-- 1. Statistics Cards -->
+        <section class="stats-section" aria-label="System Metrics">
+            <div class="stat-card">
+                <div class="stat-icon icon-blue">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Jobs Submitted</span>
+                    <span class="stat-value" id="stat-total">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-amber">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Waiting in Queue</span>
+                    <span class="stat-value" id="stat-waiting">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-teal">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                        <rect x="6" y="14" width="12" height="8"></rect>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Currently Printing</span>
+                    <span class="stat-value" id="stat-printing">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-emerald">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Completed Jobs</span>
+                    <span class="stat-value" id="stat-completed">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-slate">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="15" y1="9" x2="9" y2="15"></line>
+                        <line x1="9" y1="9" x2="15" y2="15"></line>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Cancelled / Failed</span>
+                    <span class="stat-value" id="stat-cancelled">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon icon-indigo">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">Total Pages Printed</span>
+                    <span class="stat-value" id="stat-pages">0</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. Primary 2-Column Work Area -->
+        <div class="dashboard-grid">
+
+            <!-- LEFT COLUMN: Job Submission & Simulation Controls -->
+            <div class="grid-column">
+
+                <!-- Submit Print Job Card -->
+                <div class="card" id="submit-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h2 class="card-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M12 5v14M5 12h14"></path>
+                                </svg>
+                                Submit Print Job
+                            </h2>
+                            <span class="card-subtitle">Client thread dispatching a job to the spooler queue</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <form id="job-form" autocomplete="off">
+                            <div class="form-group">
+                                <label for="user_name">User Name / Department <span class="required">*</span></label>
+                                <input type="text" id="user_name" name="user_name" class="form-input" placeholder="e.g. Alice (Finance), Bob (Engineering)" required maxlength="50">
+                                <div class="quick-chips">
+                                    <span class="chip-label">Quick select:</span>
+                                    <button type="button" class="chip-btn" data-fill="Alice (Finance)">Alice</button>
+                                    <button type="button" class="chip-btn" data-fill="Bob (Engineering)">Bob</button>
+                                    <button type="button" class="chip-btn" data-fill="Charlie (Research)">Charlie</button>
+                                    <button type="button" class="chip-btn" data-fill="Diana (Legal)">Diana</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="document_name">Document Name <span class="required">*</span></label>
+                                <input type="text" id="document_name" name="document_name" class="form-input" placeholder="e.g. Operating_Systems_Notes.pdf" required maxlength="100">
+                                <div class="quick-chips">
+                                    <span class="chip-label">Quick presets:</span>
+                                    <button type="button" class="chip-doc" data-doc="Thesis_Final_Draft.pdf" data-pages="8">Thesis.pdf</button>
+                                    <button type="button" class="chip-doc" data-doc="Quarterly_Financials.xlsx" data-pages="4">Financials.xlsx</button>
+                                    <button type="button" class="chip-doc" data-doc="Confidential_NDA.docx" data-pages="2">NDA.docx</button>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="pages">Number of Pages <span class="required">*</span></label>
+                                <div class="input-with-hint">
+                                    <input type="number" id="pages" name="pages" class="form-input" min="1" max="100" value="4" required>
+                                    <span class="input-hint">1 to 100 pages (simulated time: ~0.8s/page)</span>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" id="submit-btn" class="btn btn-primary">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                    </svg>
+                                    Submit Print Job
+                                </button>
+                                <button type="button" id="btn-batch-demo" class="btn btn-secondary" title="Dispatches 4 jobs simultaneously from separate threads to prove thread safety">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                                    </svg>
+                                    Simulate Multi-User Traffic
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Simulation Control Panel Card -->
+                <div class="card" id="control-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h2 class="card-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                                </svg>
+                                Simulation Controls
+                            </h2>
+                            <span class="card-subtitle">Manage worker thread lifecycle and speed</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <div class="control-button-grid">
+                            <button id="btn-start" class="btn btn-control btn-start" title="Start or resume worker thread">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                </svg>
+                                Start
+                            </button>
+                            <button id="btn-pause" class="btn btn-control btn-pause" title="Pauses after active job finishes safely">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <rect x="6" y="4" width="4" height="16"></rect>
+                                    <rect x="14" y="4" width="4" height="16"></rect>
+                                </svg>
+                                Pause
+                            </button>
+                            <button id="btn-resume" class="btn btn-control btn-resume" title="Continue processing waiting jobs">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="13 17 18 12 13 7"></polyline>
+                                    <polyline points="6 17 11 12 6 7"></polyline>
+                                </svg>
+                                Resume
+                            </button>
+                            <button id="btn-reset" class="btn btn-control btn-reset" title="Safely terminate worker and clear queue">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                    <path d="M3 3v5h5"></path>
+                                </svg>
+                                Reset
+                            </button>
+                        </div>
+
+                        <!-- Speed Regulator -->
+                        <div class="speed-control-box">
+                            <div class="speed-header">
+                                <span class="speed-label">Simulated Print Speed (Demo Tuning):</span>
+                                <span class="speed-value" id="current-speed-val">0.8s / page</span>
+                            </div>
+                            <div class="speed-buttons">
+                                <button type="button" class="btn-speed" data-speed="0.3">Fast (0.3s)</button>
+                                <button type="button" class="btn-speed active" data-speed="0.8">Normal (0.8s)</button>
+                                <button type="button" class="btn-speed" data-speed="1.5">Slow (1.5s)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Active Job Monitor & Dining Philosophers Visualizer -->
+            <div class="grid-column">
+
+                <!-- Shared Printer Status & Active Job Progress -->
+                <div class="card" id="printer-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h2 class="card-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
+                                Shared Printer Device & Critical Section
+                            </h2>
+                            <span class="card-subtitle">Protected Physical Resource (Mutual Exclusion Enforced)</span>
+                        </div>
+                        <div class="printer-lock-indicator" id="lock-banner">
+                            <span class="lock-icon" id="lock-icon-svg">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                </svg>
+                            </span>
+                            <span id="lock-status-text">MUTEX UNLOCKED</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Printer Hardware Visualization -->
+                        <div class="printer-visual-stage" id="printer-stage">
+                            <div class="printer-device" id="printer-device-box">
+                                <div class="paper-slot-top">
+                                    <div class="paper-sheet paper-input" id="paper-in"></div>
+                                </div>
+                                <div class="printer-chassis">
+                                    <div class="printer-led" id="printer-led"></div>
+                                    <div class="printer-screen" id="printer-lcd-screen">
+                                        <span class="lcd-text" id="lcd-line1">PRINTER READY</span>
+                                        <span class="lcd-text" id="lcd-line2">QUEUE IDLE</span>
+                                    </div>
+                                    <div class="printer-brand">OFFICE-JET 9000</div>
+                                </div>
+                                <div class="paper-slot-bottom">
+                                    <div class="paper-sheet paper-output" id="paper-out"></div>
+                                </div>
+                            </div>
+
+                            <!-- Active Job Details Box -->
+                            <div class="active-job-details" id="active-job-container">
+                                <div class="no-job-banner" id="no-job-msg">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                    </svg>
+                                    <p>Printer is currently <strong>IDLE</strong></p>
+                                    <span>Waiting for jobs in FIFO Queue...</span>
+                                </div>
+
+                                <div class="active-job-info hidden" id="active-job-data">
+                                    <div class="active-badge-row">
+                                        <span class="badge badge-printing pulse">PRINTING IN PROGRESS</span>
+                                        <span class="job-id-pill" id="active-job-id-pill">Job #1</span>
+                                    </div>
+                                    <h3 class="active-doc-name" id="active-doc-title">Document_Title.pdf</h3>
+                                    <p class="active-user-meta">Submitted by <strong id="active-user-name">User</strong></p>
+                                    
+                                    <div class="progress-section">
+                                        <div class="progress-labels">
+                                            <span>Printing Progress</span>
+                                            <span id="active-page-count">0 / 0 pages (0%)</span>
+                                        </div>
+                                        <div class="progress-bar-track">
+                                            <div class="progress-bar-fill" id="active-progress-bar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dining Philosophers Analogy Visualization -->
+                <div class="card" id="philosophers-card">
+                    <div class="card-header">
+                        <div class="card-title-group">
+                            <h2 class="card-title">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"></path>
+                                    <path d="M2 12h20"></path>
+                                </svg>
+                                Dining Philosophers Resource Model
+                            </h2>
+                            <span class="card-subtitle">Live topology: Competing client threads surrounding the shared resource</span>
+                        </div>
+                    </div>
+
+                    <div class="card-body">
+                        <!-- Topology SVG Canvas -->
+                        <div class="topology-container" id="topology-container">
+                            <svg id="topology-svg" class="topology-svg" viewBox="0 0 500 320" xmlns="http://www.w3.org/2000/svg">
+                                <!-- Background grid/rings -->
+                                <circle cx="250" cy="160" r="110" fill="none" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4 4" />
+                                
+                                <!-- Connecting lines container (dynamic) -->
+                                <g id="svg-connectors"></g>
+
+                                <!-- Central Shared Printer Resource Node -->
+                                <g id="center-printer-node" transform="translate(250, 160)">
+                                    <circle id="center-circle" r="42" fill="#0284c7" stroke="#38bdf8" stroke-width="3" />
+                                    <g transform="translate(-14, -20)" fill="none" stroke="#ffffff" stroke-width="2">
+                                        <polyline points="4 6 4 1 12 1 12 6"></polyline>
+                                        <path d="M4 12H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-2"></path>
+                                        <rect x="4" y="9" width="8" height="5"></rect>
+                                    </g>
+                                    <text y="14" text-anchor="middle" fill="#ffffff" font-size="11" font-weight="600" font-family="Inter, sans-serif">SHARED</text>
+                                    <text y="26" text-anchor="middle" fill="#e0f2fe" font-size="9" font-family="Inter, sans-serif">PRINTER</text>
+                                </g>
+
+                                <!-- Surrounding User Thread Nodes (Dynamic) -->
+                                <g id="svg-user-nodes"></g>
+                            </svg>
+                        </div>
+
+                        <!-- Legend -->
+                        <div class="viz-legend">
+                            <div class="legend-item"><span class="legend-dot dot-idle"></span> Thinking / Idle</div>
+                            <div class="legend-item"><span class="legend-dot dot-waiting"></span> Hungry / Queued</div>
+                            <div class="legend-item"><span class="legend-dot dot-printing"></span> Eating / Mutex Held</div>
+                            <div class="legend-item"><span class="legend-dot dot-completed"></span> Finished</div>
+                        </div>
+
+                        <!-- Educational Analogy Callout -->
+                        <div class="analogy-callout">
+                            <strong>Theoretical Connection:</strong>
+                            <p>In Dijkstra’s <em>Dining Philosophers</em> problem, competing threads (philosophers) require exclusive access to shared resources (forks). In our Printer Spooler, multiple user threads submit print requests to a single printer. Instead of risking circular wait and deadlock, our spooler mediates access through a <strong>centralized FIFO queue</strong> and protects printer operations via a strict <strong>Mutex Critical Section</strong>.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- 3. Print Queue Management Table -->
+        <section class="card full-width-card" id="queue-card">
+            <div class="card-header">
+                <div class="card-title-group">
+                    <h2 class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="8" y1="6" x2="21" y2="6"></line>
+                            <line x1="8" y1="12" x2="21" y2="12"></line>
+                            <line x1="8" y1="18" x2="21" y2="18"></line>
+                            <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                            <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                            <line x1="3" y1="18" x2="3.01" y2="18"></line>
+                        </svg>
+                        Print Queue Management (FIFO Discipline)
+                    </h2>
+                    <span class="card-subtitle">Jobs are strictly processed in order of submission to prevent thread starvation</span>
+                </div>
+                <div class="table-actions">
+                    <span class="queue-counter-tag" id="queue-count-badge">0 Jobs in Queue</span>
+                </div>
+            </div>
+
+            <div class="card-body table-responsive">
+                <table class="data-table" id="jobs-table">
+                    <thead>
+                        <tr>
+                            <th scope="col" style="width: 80px;">Job ID</th>
+                            <th scope="col">User / Department</th>
+                            <th scope="col">Document Name</th>
+                            <th scope="col" style="width: 90px;">Pages</th>
+                            <th scope="col">Submitted At</th>
+                            <th scope="col" style="width: 140px;">Status</th>
+                            <th scope="col" style="width: 130px;">Progress</th>
+                            <th scope="col" style="width: 120px; text-align: center;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="jobs-tbody">
+                        <tr class="empty-row" id="jobs-empty-row">
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                        <polyline points="14 2 14 8 20 8"></polyline>
+                                    </svg>
+                                    <p>No print jobs submitted yet</p>
+                                    <span>Use the form above or click "Simulate Multi-User Traffic"</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- 4. Live Activity Log -->
+        <section class="card full-width-card" id="logs-card">
+            <div class="card-header">
+                <div class="card-title-group">
+                    <h2 class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="4 17 10 11 4 5"></polyline>
+                            <line x1="12" y1="19" x2="20" y2="19"></line>
+                        </svg>
+                        Synchronization & Activity Event Stream
+                    </h2>
+                    <span class="card-subtitle">Real-time trace of lock acquisitions, releases, and state transitions</span>
+                </div>
+                <div class="log-controls">
+                    <label class="autoscroll-toggle">
+                        <input type="checkbox" id="autoscroll-cb" checked>
+                        <span>Auto-scroll</span>
+                    </label>
+                    <button type="button" id="btn-clear-log-view" class="btn btn-sm btn-outline">Clear View</button>
+                </div>
+            </div>
+
+            <div class="card-body">
+                <div class="activity-log-stream" id="log-stream-box" role="log" aria-live="polite">
+                    <!-- Dynamic log items inserted here -->
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. Educational Help & Synchronization Theory Section (Viva Ready) -->
+        <section class="card full-width-card" id="edu-card">
+            <div class="card-header">
+                <div class="card-title-group">
+                    <h2 class="card-title">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+                            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+                        </svg>
+                        Operating System Synchronization & Deadlock Guide (Viva Notes)
+                    </h2>
+                    <span class="card-subtitle">Core theoretical concepts implemented in this mini-project</span>
+                </div>
+            </div>
+
+            <div class="card-body edu-grid">
+                <div class="edu-item">
+                    <div class="edu-badge">1</div>
+                    <div class="edu-content">
+                        <h3>What is a Printer Spooler?</h3>
+                        <p><strong>SPOOL</strong> stands for <em>Simultaneous Peripheral Operations On-Line</em>. Since physical printers operate much slower than CPUs and application threads, jobs are spooled into a buffer/queue. This prevents client applications from blocking while waiting for sheets of paper to print.</p>
+                    </div>
+                </div>
+
+                <div class="edu-item">
+                    <div class="edu-badge">2</div>
+                    <div class="edu-content">
+                        <h3>The Need for Synchronization</h3>
+                        <p>When multiple users or client threads dispatch print jobs simultaneously, uncoordinated access causes <strong>race conditions</strong>. Without synchronization, pages from different users would interleave, corrupt counters, and crash memory. Synchronization enforces orderly, predictable sharing.</p>
+                    </div>
+                </div>
+
+                <div class="edu-item">
+                    <div class="edu-badge">3</div>
+                    <div class="edu-content">
+                        <h3>Critical Section & Mutual Exclusion</h3>
+                        <p>The code segment that operates on the shared hardware resource (the physical printer) is the <strong>Critical Section</strong>. We enforce <strong>Mutual Exclusion</strong> using a binary semaphore / mutex (<code>threading.Lock</code>). Exactly one job can hold the printer lock at any instant.</p>
+                    </div>
+                </div>
+
+                <div class="edu-item">
+                    <div class="edu-badge">4</div>
+                    <div class="edu-content">
+                        <h3>FIFO Scheduling & Starvation Freedom</h3>
+                        <p>Jobs are placed into a thread-safe FIFO queue (<code>queue.Queue</code>). Jobs are processed strictly in their submission order. This guarantees fairness and ensures no user process suffers from indefinite postponement (<strong>starvation</strong>).</p>
+                    </div>
+                </div>
+
+                <div class="edu-item">
+                    <div class="edu-badge">5</div>
+                    <div class="edu-content">
+                        <h3>The 4 Necessary Deadlock Conditions</h3>
+                        <p>According to the Coffman conditions, a deadlock can occur if and only if all 4 conditions hold simultaneously:</p>
+                        <ul class="deadlock-list">
+                            <li><strong>Mutual Exclusion:</strong> At least one resource is held in a non-shareable mode.</li>
+                            <li><strong>Hold and Wait:</strong> A process holds a resource while requesting additional resources.</li>
+                            <li><strong>No Preemption:</strong> Resources cannot be forcibly taken from a process holding them.</li>
+                            <li><strong>Circular Wait:</strong> A closed chain of processes exists where each holds a resource needed by the next.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="edu-item">
+                    <div class="edu-badge">6</div>
+                    <div class="edu-content">
+                        <h3>How Our System Prevents Deadlock</h3>
+                        <p>Our design breaks the <strong>Circular Wait</strong> and <strong>Hold and Wait</strong> conditions. Client threads never hold one printer while requesting another; they simply drop a request into a single FIFO queue and terminate their request phase. The worker acquires only a single mutex at a time and releases it before picking the next job.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <p>Printer Spooler System • Computer Science & Operating Systems Mini-Project • Developed with Python Flask, HTML5, CSS3, & Vanilla JS</p>
+    </footer>
+
+    <!-- App JavaScript -->
+    <script src="/static/js/script.js"></script>
+</body>
+</html>
